@@ -43,49 +43,48 @@ void setup()
     pinMode(3,OUTPUT); //繼電器PIN3
     digitalWrite(3,LOW);
 }
+
 void loop()
 {
-sensor();
-uchar status;
-uchar str[MAX_LEN];
+	sensor();
+	uchar status;
+	uchar str[MAX_LEN];
 
-status = MFRC522_Request(PICC_REQIDL, str);
-if (status != MI_OK)
-{
-return;
-}
-status = MFRC522_Anticoll(str);
-if (status == MI_OK)
-{
-memcpy(serNum, str, 5);
-uchar* id = serNum;
-if( id[0]==0xE6 && id[1]==0x4E && id[2]==0x66 && id[3]==0x0C ) {
-Serial.println("SUCCESS! Door opened for 5 seconds.");
-
-opendoor();
-        } 
-        
-        else{
-          Serial.println("FAILED");//印出資料
-           
-         Serial.print("The card ID is: ");
-        memcpy(serNum, str, 5);
-        ShowCardID(serNum);
-        uchar* id = serNum;  
-          
-          
-          play(melody_wrong, noteDurations_default, sizeof(melody_default) / sizeof(int));
-          
+	status = MFRC522_Request(PICC_REQIDL, str);
+	if (status != MI_OK)
+	{
+			return;
+	}
+	status = MFRC522_Anticoll(str);
+	if (status == MI_OK)
+	{
+		memcpy(serNum, str, 5);
+		uchar* id = serNum;
+		if(1)
+		//卡號儲存在id[0]-id[3]四個數值裡，寫規則判斷
+		{
+			Serial.println("SUCCESS! Door opened for 5 seconds.");
+			opendoor();
         }
-    
-}
+        else
+		{
+			Serial.println("FAILED");
+			Serial.print("The card ID is: ");
+			memcpy(serNum, str, 5);
+			ShowCardID(serNum);
+			uchar* id = serNum;
+			play(melody_wrong, noteDurations_default, sizeof(melody_default) / sizeof(int));
+		}
+	}
     //MFRC522_Halt();
 }
+
 void ShowCardID(uchar *id)
 {
-    int IDlen=4;
-    for(int i=0; i<IDlen; i++){
-        Serial.print(0x0F & (id[i]>>4), HEX);
+	int IDlen=4;
+	for(int i=0; i<IDlen; i++)
+	{
+    	Serial.print(0x0F & (id[i]>>4), HEX);
         Serial.print(0x0F & id[i],HEX);
     }
     Serial.println("");
@@ -95,11 +94,9 @@ void ShowCardID(uchar *id)
 void Write_MFRC522(uchar addr, uchar val)
 {
     digitalWrite(chipSelectPin, LOW);
- 
     //address format：0XXXXXX0
     SPI.transfer((addr<<1)&0x7E);
     SPI.transfer(val);
- 
     digitalWrite(chipSelectPin, HIGH);
 }
 
@@ -112,6 +109,7 @@ uchar Read_MFRC522(uchar addr)
     digitalWrite(chipSelectPin, HIGH);
     return val;
 }
+
 void SetBitMask(uchar reg, uchar mask)
 {
     uchar tmp;
@@ -121,28 +119,31 @@ void SetBitMask(uchar reg, uchar mask)
 
 void ClearBitMask(uchar reg, uchar mask)
 {
-    uchar tmp;
+	uchar tmp;
     tmp = Read_MFRC522(reg);
     Write_MFRC522(reg, tmp & (~mask)); // clear bit mask
 }
+
 void AntennaOn(void)
 {
     uchar temp;
- 
     temp = Read_MFRC522(TxControlReg);
     if (!(temp & 0x03))
     {
         SetBitMask(TxControlReg, 0x03);
     }
 }
+
 void AntennaOff(void)
 {
     ClearBitMask(TxControlReg, 0x03);
 }
+
 void MFRC522_Reset(void)
 {
     Write_MFRC522(CommandReg, PCD_RESETPHASE);
 }
+
 void MFRC522_Init(void)
 {
     digitalWrite(NRSTPD,HIGH);
@@ -152,10 +153,10 @@ void MFRC522_Init(void)
     Write_MFRC522(TReloadRegL, 30);
     Write_MFRC522(TReloadRegH, 0);
     Write_MFRC522(TxAutoReg, 0x40); //100%ASK
-    Write_MFRC522(ModeReg, 0x3D); //CRC initilizate value 0x6363 ???
-
+    Write_MFRC522(ModeReg, 0x3D); //CRC initilizate value 0x6363
     AntennaOn(); //turn on antenna
 }
+
 uchar MFRC522_Request(uchar reqMode, uchar *TagType)
 {
     uchar status;
@@ -169,6 +170,7 @@ uchar MFRC522_Request(uchar reqMode, uchar *TagType)
     }
     return status;
 }
+
 uchar MFRC522_ToCard(uchar command, uchar *sendData, uchar sendLen, uchar *backData, uint *backLen)
 {
     uchar status = MI_ERR;
@@ -177,7 +179,6 @@ uchar MFRC522_ToCard(uchar command, uchar *sendData, uchar sendLen, uchar *backD
     uchar lastBits;
     uchar n;
     uint i;
- 
     switch (command)
     {
         case PCD_AUTHENT: //verify card password
@@ -262,14 +263,12 @@ uchar MFRC522_ToCard(uchar command, uchar *sendData, uchar sendLen, uchar *backD
         {
             status = MI_ERR;
         }
- 
     }
- 
     //SetBitMask(ControlReg,0x80); //timer stops
     //Write_MFRC522(CommandReg, PCD_IDLE);
- 
     return status;
 }
+
 uchar MFRC522_Anticoll(uchar *serNum)
 {
     uchar status;
@@ -277,11 +276,9 @@ uchar MFRC522_Anticoll(uchar *serNum)
     uchar serNumCheck=0;
     uint unLen;
     Write_MFRC522(BitFramingReg, 0x00); //TxLastBists = BitFramingReg[2..0]
- 
     serNum[0] = PICC_ANTICOLL;
     serNum[1] = 0x20;
     status = MFRC522_ToCard(PCD_TRANSCEIVE, serNum, 2, serNum, &unLen);
- 
     if (status == MI_OK)
     {
         //Verify card serial number
@@ -294,15 +291,13 @@ uchar MFRC522_Anticoll(uchar *serNum)
             status = MI_ERR;
         }
     }
- 
     //SetBitMask(CollReg, 0x80); //ValuesAfterColl=1
- 
     return status;
 }
+
 void CalulateCRC(uchar *pIndata, uchar len, uchar *pOutData)
 {
     uchar i, n;
- 
     ClearBitMask(DivIrqReg, 0x04); //CRCIrq = 0
     SetBitMask(FIFOLevelReg, 0x80); //Clear FIFO pointer
     for (i=0; i<len; i++)
@@ -310,7 +305,6 @@ void CalulateCRC(uchar *pIndata, uchar len, uchar *pOutData)
         Write_MFRC522(FIFODataReg, *(pIndata+i));
     }
     Write_MFRC522(CommandReg, PCD_CALCCRC);
- 
     //waite CRC caculation to finish
     i = 0xFF;
     do
@@ -322,23 +316,21 @@ void CalulateCRC(uchar *pIndata, uchar len, uchar *pOutData)
     pOutData[0] = Read_MFRC522(CRCResultRegL);
     pOutData[1] = Read_MFRC522(CRCResultRegM);
 }
+
 uchar MFRC522_Write(uchar blockAddr, uchar *writeData)
 {
     uchar status;
     uint recvBits;
     uchar i;
     uchar buff[18];
- 
     buff[0] = PICC_WRITE;
     buff[1] = blockAddr;
     CalulateCRC(buff, 2, &buff[2]);
     status = MFRC522_ToCard(PCD_TRANSCEIVE, buff, 4, buff, &recvBits);
- 
     if ((status != MI_OK) || (recvBits != 4) || ((buff[0] & 0x0F) != 0x0A))
     {
         status = MI_ERR;
     }
- 
     if (status == MI_OK)
     {
         for (i=0; i<16; i++) //Write 16 bytes data into FIFO
@@ -353,7 +345,6 @@ uchar MFRC522_Write(uchar blockAddr, uchar *writeData)
             status = MI_ERR;
         }
     }
- 
     return status;
 }
 
@@ -362,40 +353,38 @@ void MFRC522_Halt(void)
     uchar status;
     uint unLen;
     uchar buff[4];
- 
     buff[0] = PICC_HALT;
     buff[1] = 0;
     CalulateCRC(buff, 2, &buff[2]);
- 
     status = MFRC522_ToCard(PCD_TRANSCEIVE, buff, 4, buff,&unLen);
 }
 
 void sensor()
 {
-  float duration, distances;//測距器
-int intervaltime=500;
-digitalWrite(trigPin, HIGH);
-delayMicroseconds(1000);
-digitalWrite(trigPin, LOW);
-duration = pulseIn(echoPin, HIGH);
-distances = (duration/2) / 29.1;
-if( distances < 10 && distances != 0)
-{
-Serial.println("Internal sensor activated!    Door opened for 5 seconds.");//印出資料
-digitalWrite(3,HIGH);
-play(melody_default, noteDurations_default, sizeof(melody_default) / sizeof(int));
+	float duration, distances;
+	int intervaltime=500;
+	digitalWrite(trigPin, HIGH);
+	delayMicroseconds(1000);
+	digitalWrite(trigPin, LOW);
+	duration = pulseIn(echoPin, HIGH);
+	distances = (duration/2) / 29.1;
+	if( distances < 10 && distances != 0)
+	{
+		Serial.println("Internal sensor activated!    Door opened for 5 seconds.");
+		digitalWrite(3,HIGH);
+		play(melody_default, noteDurations_default, sizeof(melody_default) / sizeof(int));
+		delay(5000);
+		digitalWrite(3,LOW);
+		Serial.println("                              Door locked due to timeout.");
+	}
+}
 
-delay(5000);
- digitalWrite(3,LOW);
-Serial.println("                              Door locked due to timeout.");//印出資料
-}
-}
 void opendoor()
 {
-   digitalWrite(3,HIGH);
-   play(melody_default, noteDurations_default, sizeof(melody_default) / sizeof(int));
-            
-            delay(5000);
-            digitalWrite(3,LOW);
-            Serial.println("                              Door locked due to timeout.");//印出資料
+	digitalWrite(3,HIGH);
+	play(melody_default, noteDurations_default, sizeof(melody_default) / sizeof(int));
+	delay(5000);
+	digitalWrite(3,LOW);
+	Serial.println("                              Door locked due to timeout.");
 }
+
